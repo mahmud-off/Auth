@@ -26,9 +26,11 @@ func main() {
 
 	hasher := hash.NewSHA1Hasher(cfg.HashSalt)
 
-	repo := repository.NewUsersRepository(db)
-	src := service.NewUsersService(repo, hasher)
-	handler := rest.NewHandler(src)
+	UserRepo := repository.NewUsersRepository(db)
+	InfoRepo := repository.NewInfoRepository(db)
+	userService := service.NewUsersService(UserRepo, hasher, []byte("some secret signature"))
+	InfoService := service.NewInfoService(InfoRepo)
+	handler := rest.NewHandler(userService, InfoService)
 
 	srv := new(server.Server)
 	if err := srv.Run("8080", handler.InitRoutes()); err != nil {

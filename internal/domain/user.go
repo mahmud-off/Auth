@@ -8,7 +8,12 @@ import (
 
 var validate *validator.Validate
 
+func init() {
+	validate = validator.New()
+}
+
 type User struct {
+	ID           int       `json:"id"`
 	Name         string    `json:"name"`
 	Email        string    `json:"email"`
 	Password     string    `json:"password"`
@@ -22,5 +27,14 @@ type SignUpInput struct {
 }
 
 func (i SignUpInput) Validate() error {
+	return validate.Struct(i)
+}
+
+type SignInInput struct {
+	Email    string `json:"email" db:"name" validate:"required,email"`
+	Password string `json:"password" db:"name" validate:"required,gte=8"`
+}
+
+func (i SignInInput) Validate() error {
 	return validate.Struct(i)
 }
