@@ -28,8 +28,11 @@ func main() {
 
 	UserRepo := repository.NewUsersRepository(db)
 	InfoRepo := repository.NewInfoRepository(db)
-	userService := service.NewUsersService(UserRepo, hasher, []byte("some secret signature"))
+	TokenRepo := repository.NewTokens(db)
+
+	userService := service.NewUsersService(UserRepo, hasher, TokenRepo, []byte("some secret signature"))
 	InfoService := service.NewInfoService(InfoRepo)
+
 	handler := rest.NewHandler(userService, InfoService)
 
 	srv := new(server.Server)

@@ -7,8 +7,9 @@ import (
 
 type User interface {
 	SignUp(ctx *gin.Context, inp domain.SignUpInput) error
-	SignIn(cxt *gin.Context, inp domain.SignInInput) (string, error)
+	SignIn(ctx *gin.Context, inp domain.SignInInput) (string, string, error)
 	ParseToken(cxt *gin.Context, token string) (int, error)
+	RefreshTokens(ctx *gin.Context, refreshToken string) (string, string, error)
 }
 
 type Info interface {
@@ -34,6 +35,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	{
 		auth.POST("/sign-up", h.signUp)
 		auth.GET("/sign-in", h.signIn)
+		auth.GET("/refresh", h.refresh)
 	}
 
 	info := router.Group("/info")

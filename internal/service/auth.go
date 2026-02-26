@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -19,17 +21,24 @@ type Repository interface {
 	GetByCredentials(cxt *gin.Context, email string, password string) (domain.User, error)
 }
 
+type TokensRepository interface {
+	Create(ctx *gin.Context, t domain.RefreshSession) error
+	Get(ctx *gin.Context, refreshToken string) (domain.RefreshSession, error)
+}
+
 type UsersService struct {
 	repo   Repository
 	hasher PasswordHasher
+	token  TokensRepository
 
 	hmacSecret []byte
 }
 
-func NewUsersService(repo Repository, hasher PasswordHasher, secret []byte) *UsersService {
+func NewUsersService(repo Repository, hasher PasswordHasher, tokener TokensRepository, secret []byte) *UsersService {
 	return &UsersService{
 		repo:   repo,
 		hasher: hasher,
+		token:  tokener,
 
 		hmacSecret: secret,
 	}
@@ -51,27 +60,19 @@ func (s *UsersService) SignUp(ctx *gin.Context, inp domain.SignUpInput) error {
 	return s.repo.Create(ctx, user)
 }
 
-func (s *UsersService) SignIn(cxt *gin.Context, inp domain.SignInInput) (string, error) {
+func (s *UsersService) SignIn(ctx *gin.Context, inp domain.SignInInput) (string, string, error) {
 
 	password, err := s.hasher.Hash(inp.Password)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	user, err := s.repo.GetByCredentials(cxt, inp.Email, password)
+	user, err := s.repo.GetByCredentials(ctx, inp.Email, password)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-		Subject:  strconv.Itoa(user.ID),
-		IssuedAt: time.Now().Unix(),
-		//TODO: link from config --> .yml
-		ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
-	})
-
-	return token.SignedString(s.hmacSecret)
-
+	return s.generateTokens(ctx, int64(user.ID))
 }
 
 func (s *UsersService) ParseToken(ctx *gin.Context, token string) (int, error) {
@@ -103,4 +104,60 @@ func (s *UsersService) ParseToken(ctx *gin.Context, token string) (int, error) {
 	}
 
 	return id, nil
+}
+
+func (s *UsersService) generateTokens(ctx *gin.Context, userId int64) (string, string, error) {
+
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
+		Subject:  strconv.Itoa(int(userId)),
+		IssuedAt: time.Now().Unix(),
+		//TODO: link from config --> .yml
+		ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
+	})
+
+	accessToken, err := t.SignedString(s.hmacSecret)
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshToken, err := newRefreshToken()
+	if err != nil {
+		return "", "", err
+	}
+
+	if err := s.token.Create(ctx, domain.RefreshSession{
+		UserId:     int(userId),
+		Token:      refreshToken,
+		Expires_at: time.Now().Add(time.Hour * 24 * 30),
+	}); err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
+}
+
+func newRefreshToken() (string, error) {
+	b := make([]byte, 32)
+
+	s := rand.NewSource(time.Now().Unix())
+	r := rand.New(s)
+
+	if _, err := r.Read(b); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", b), nil
+}
+
+func (s *UsersService) RefreshTokens(ctx *gin.Context, refreshToken string) (string, string, error) {
+	session, err := s.token.Get(ctx, refreshToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	if session.Expires_at.Unix() < time.Now().Unix() {
+		return "", "", domain.ErrRefreshTokenExpired
+	}
+
+	return s.generateTokens(ctx, int64(session.UserId))
 }
