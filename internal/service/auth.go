@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/mahmud-off/auth/internal/domain"
+	"github.com/mahmud-off/auth/pkg/logger"
 )
 
 type PasswordHasher interface {
@@ -80,7 +81,7 @@ func (s *UsersService) ParseToken(ctx *gin.Context, token string) (int, error) {
 		return s.hmacSecret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
-		//TODO: logging
+		logger.Debug("Invalid Token")
 		return 0, err
 	}
 

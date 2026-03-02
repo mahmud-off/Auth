@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	_ "github.com/lib/pq"
 	setup "github.com/mahmud-off/auth/init"
 	"github.com/mahmud-off/auth/internal/repository"
@@ -8,20 +10,28 @@ import (
 	"github.com/mahmud-off/auth/internal/service"
 	"github.com/mahmud-off/auth/internal/transport/rest"
 	"github.com/mahmud-off/auth/pkg/hash"
+	"github.com/mahmud-off/auth/pkg/logger"
 	"github.com/mahmud-off/auth/pkg/psql"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
 
+	logger.Init(&logger.LoggerConfig{
+		JSONFormatter: true,
+		Level:         "info",
+		ShowMethod:    false,
+	})
+
 	cfg, err := setup.ParseConfig()
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatalf("Config parsing problem: %s", err.Error())
+		return
 	}
 
 	db, err := psql.NewPostgresDB(&cfg.DB)
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatalf("PostgreSQL connection problem: %s", err.Error())
+		return
 	}
 
 	hasher := hash.NewSHA1Hasher(cfg.HashSalt)
@@ -36,8 +46,19 @@ func main() {
 	handler := rest.NewHandler(userService, InfoService)
 
 	srv := new(server.Server)
-	if err := srv.Run("8080", handler.InitRoutes()); err != nil {
-		logrus.Fatalf("error occured while running http server: %s", err.Error())
-	}
 
+	//TODO: parse port from .yml
+	go func() {
+		if err := srv.Run("8080", handler.InitRoutes()); err != nil {
+			logger.Errorf("error occured while running http server: %s", err.Error())
+		}
+	}()
+
+	logger.Info("SERVER STARTED")
+
+	srv.GracefulShutdown(context.Background())
+
+	if err := db.Close(); err != nil {
+		logger.Errorf("error closing database: %s", err.Error())
+	}
 }

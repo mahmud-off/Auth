@@ -3,7 +3,12 @@ package server
 import (
 	"context"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
+
+	"github.com/mahmud-off/auth/pkg/logger"
 )
 
 type Server struct {
@@ -23,6 +28,19 @@ func (s *Server) Run(port string, handler http.Handler) error {
 	return s.httpSever.ListenAndServe()
 }
 
-func (s *Server) Shutdown(ctx context.Context) error {
-	return s.httpSever.Shutdown(ctx)
+func (s *Server) GracefulShutdown(ctx context.Context) {
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+
+	<-quit
+
+	logger.Info("SERVER SHUTTING DOWN")
+
+	err := s.httpSever.Shutdown(ctx)
+	if err != nil {
+		logger.Errorf("server shutting down error: %s", err.Error())
+	} else {
+		logger.Info("server gracefully stopped")
+	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mahmud-off/auth/internal/transport/rest/response"
+	"github.com/mahmud-off/auth/pkg/logger"
 )
 
 const (
@@ -18,12 +19,13 @@ func (h *Handler) authMiddleware(ctx *gin.Context) {
 
 	token, err := getTokenFromHeader(ctx)
 	if err != nil {
-		//TODO: logging
+		logger.Errorf("Invalid header: %s", err.Error())
 		response.NewErrorResponse(ctx, http.StatusUnauthorized, err.Error())
 	}
 
 	userId, err := h.userService.ParseToken(ctx, token)
 	if err != nil {
+		logger.Errorf("Invalid token: %s", err.Error())
 		response.NewErrorResponse(ctx, http.StatusUnauthorized, err.Error())
 		return
 	}
