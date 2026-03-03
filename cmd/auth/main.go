@@ -35,7 +35,6 @@ func main() {
 		logger.Fatalf("PostgreSQL connection error: %s", err.Error())
 	}
 
-	// TODO: parse from yml
 	rdb, err := redisdb.NewRedisConnection(&redisdb.RedisConnectionConfig{
 		Addr:     fmt.Sprintf("%s:%s", cfg.RedisAddr, cfg.RedisPort),
 		Password: cfg.RedisPassword,
@@ -72,5 +71,9 @@ func main() {
 
 	if err := db.Close(); err != nil {
 		logger.Errorf("error closing database: %s", err.Error())
+	}
+
+	if err := rdb.Close(); err != nil {
+		logger.Errorf("error closing Redis: %s", err.Error())
 	}
 }
