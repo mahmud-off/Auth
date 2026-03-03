@@ -19,6 +19,11 @@ func (h *Handler) authMiddleware(ctx *gin.Context) {
 		response.NewErrorResponse(ctx, http.StatusUnauthorized, err.Error())
 	}
 
+	if h.userService.TokenInBlackList(ctx, token) {
+		logger.Error("token is blocked by black list")
+		response.NewErrorResponse(ctx, http.StatusUnauthorized, "token is blocked by black list")
+	}
+
 	userId, err := h.userService.ParseToken(ctx, token)
 	if err != nil {
 		logger.Errorf("Invalid token: %s", err.Error())

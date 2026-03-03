@@ -15,18 +15,22 @@ const (
 )
 
 type Config struct {
-	DB            psql.PostgresConnectionConfig
+	SQLDB         psql.PostgresConnectionConfig
 	HashSalt      string
-	Port          string
+	SQLPort       string
 	JSONFormatter bool
 	Level         string
 	ShowMethod    bool
+	RedisPort     string
+	RedisAddr     string
+	RedisPassword string
+	RedisDB       int
 }
 
 func ParseConfig() (*Config, error) {
 	var cfg Config
 
-	err := envconfig.Process("db", &cfg.DB)
+	err := envconfig.Process("db", &cfg.SQLDB)
 	if err != nil {
 		return nil, err
 	}
@@ -40,11 +44,16 @@ func ParseConfig() (*Config, error) {
 		return nil, err
 	}
 
-	cfg.Port = strconv.Itoa(viper.GetInt("server.port"))
+	cfg.SQLPort = strconv.Itoa(viper.GetInt("server.port"))
 
 	cfg.JSONFormatter = viper.GetBool("logger.JSONFormatter")
 	cfg.Level = viper.GetString("logger.Level")
 	cfg.ShowMethod = viper.GetBool("logger.ShowMethod")
+
+	cfg.RedisAddr = viper.GetString("redis.addr")
+	cfg.RedisPort = strconv.Itoa(viper.GetInt("redis.port"))
+	cfg.RedisPassword = viper.GetString("redis.password")
+	cfg.RedisDB = viper.GetInt("redis.db")
 
 	return &cfg, nil
 }

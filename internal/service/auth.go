@@ -21,11 +21,14 @@ type PasswordHasher interface {
 type Repository interface {
 	Create(ctx *gin.Context, user domain.User) error
 	GetByCredentials(cxt *gin.Context, email string, password string) (domain.User, error)
+	AddToBlackList(ctx *gin.Context, accessToken string) error
+	TokenInBlackList(ctx *gin.Context, token string) bool
 }
 
 type TokensRepository interface {
 	Create(ctx *gin.Context, t domain.RefreshSession) error
 	Get(ctx *gin.Context, refreshToken string) (domain.RefreshSession, error)
+	Remove(ctx *gin.Context, refreshToken string) error
 }
 
 type UsersService struct {
@@ -164,4 +167,18 @@ func (s *UsersService) RefreshTokens(ctx *gin.Context, refreshToken string) (str
 	}
 
 	return s.generateTokens(ctx, int64(session.UserId))
+}
+
+// TODO: make a black list with Redis for access token --> make a middleware in order to check black list
+func (s *UsersService) LogOut(ctx *gin.Context, accessToken string, refreshToken string) error {
+
+	if err := s.repo.AddToBlackList(ctx, accessToken); err != nil {
+		return err
+	}
+
+	return s.token.Remove(ctx, refreshToken)
+}
+
+func (s *UsersService) TokenInBlackList(ctx *gin.Context, token string) bool {
+	return s.repo.TokenInBlackList(ctx, token)
 }

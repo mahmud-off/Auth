@@ -97,3 +97,30 @@ func (h *Handler) refresh(ctx *gin.Context) {
 		"token": accessToken,
 	})
 }
+
+func (h *Handler) logOut(ctx *gin.Context) {
+
+	accessToken, err := getTokenFromHeader(ctx)
+	if err != nil {
+		logger.Errorf("Invalid header: %s", err.Error())
+		response.NewErrorResponse(ctx, http.StatusUnauthorized, err.Error())
+	}
+
+	refreshToken, err := ctx.Cookie("refresh-token")
+	if err != nil {
+		logger.Errorf("Invalid refresh token: %s", err.Error())
+		response.NewErrorResponse(ctx, http.StatusBadRequest, "invalid refresh token")
+		return
+	}
+
+	if err := h.userService.LogOut(ctx, accessToken, refreshToken); err != nil {
+		logger.Errorf("LogOut error: %s", err.Error())
+		response.NewErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, map[string]string{
+		"status": "OK",
+	})
+
+}

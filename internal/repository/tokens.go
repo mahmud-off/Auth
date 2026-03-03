@@ -35,3 +35,40 @@ func (r *Tokens) Get(ctx *gin.Context, refreshToken string) (domain.RefreshSessi
 
 	return t, err
 }
+
+func (r *Tokens) Remove(ctx *gin.Context, refreshToken string) error {
+	var userIds []int
+
+	tx, err := r.db.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	rows, err := r.db.DB.Query("SELECT user_id FROM refresh_tokens WHERE token=$1", refreshToken)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	for rows.Next() {
+		var tmp int
+		err := rows.Scan(&tmp)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		userIds = append(userIds, tmp)
+	}
+
+	for _, v := range userIds {
+		_, err = r.db.DB.Exec("DELETE FROM refresh_tokens WHERE user_id= $1",
+			v)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}

@@ -8,7 +8,10 @@ import (
 type User interface {
 	SignUp(ctx *gin.Context, inp domain.SignUpInput) error
 	SignIn(ctx *gin.Context, inp domain.SignInInput) (string, string, error)
+	LogOut(ctx *gin.Context, accessToken string, refreshToken string) error
+	TokenInBlackList(ctx *gin.Context, token string) bool
 	ParseToken(cxt *gin.Context, token string) (int, error)
+
 	RefreshTokens(ctx *gin.Context, refreshToken string) (string, string, error)
 }
 
@@ -35,6 +38,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	{
 		auth.POST("/sign-up", h.signUp)
 		auth.GET("/sign-in", h.signIn)
+		auth.GET("/log-out", h.logOut).Use(h.authMiddleware)
 		auth.GET("/refresh", h.refresh)
 	}
 
