@@ -16,17 +16,17 @@ import (
 
 func main() {
 
-	logger.Init(&logger.LoggerConfig{
-		JSONFormatter: true,
-		Level:         "info",
-		ShowMethod:    false,
-	})
-
 	cfg, err := setup.ParseConfig()
 	if err != nil {
 		logger.Fatalf("Config parsing problem: %s", err.Error())
 		return
 	}
+
+	logger.Init(&logger.LoggerConfig{
+		JSONFormatter: cfg.JSONFormatter,
+		Level:         cfg.Level,
+		ShowMethod:    cfg.ShowMethod,
+	})
 
 	db, err := psql.NewPostgresDB(&cfg.DB)
 	if err != nil {
@@ -47,9 +47,8 @@ func main() {
 
 	srv := new(server.Server)
 
-	//TODO: parse port from .yml
 	go func() {
-		if err := srv.Run("8080", handler.InitRoutes()); err != nil {
+		if err := srv.Run(cfg.Port, handler.InitRoutes()); err != nil {
 			logger.Errorf("error occured while running http server: %s", err.Error())
 		}
 	}()

@@ -1,0 +1,13 @@
+server:
+  port: 8080
+
+access-token:
+  expires_at: 15 # minutes
+
+refresh-token:
+  expires_at: 720 # hours
+
+logger:
+  JSONFormatter: true
+  Level: "info" # {debug, info, warn, error} // default - error
+  ShowMethod: false

@@ -6,13 +6,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mahmud-off/auth/internal/domain"
 	"github.com/mahmud-off/auth/internal/transport/rest/response"
 	"github.com/mahmud-off/auth/pkg/logger"
-)
-
-const (
-	authHeader = "Authorization"
-	userCTX    = "userId"
 )
 
 func (h *Handler) authMiddleware(ctx *gin.Context) {
@@ -30,13 +26,13 @@ func (h *Handler) authMiddleware(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Set(userCTX, userId)
+	ctx.Set(domain.USER_CTX, userId)
 
 }
 
 func getTokenFromHeader(ctx *gin.Context) (string, error) {
 
-	header := ctx.GetHeader(authHeader)
+	header := ctx.GetHeader(domain.AUTH_HEADER)
 	if header == "" {
 		return "", errors.New("emply auth header")
 	}

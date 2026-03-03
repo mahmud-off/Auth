@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/mahmud-off/auth/internal/domain"
 	"github.com/mahmud-off/auth/pkg/logger"
+	"github.com/spf13/viper"
 )
 
 type PasswordHasher interface {
@@ -109,11 +110,13 @@ func (s *UsersService) ParseToken(ctx *gin.Context, token string) (int, error) {
 
 func (s *UsersService) generateTokens(ctx *gin.Context, userId int64) (string, string, error) {
 
+	AccessTokenExpiresAt := viper.GetInt("access-token.expires_at")
+	RefreshTokenExpiresAt := viper.GetInt("refresh-token.expires_at")
+
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-		Subject:  strconv.Itoa(int(userId)),
-		IssuedAt: time.Now().Unix(),
-		//TODO: link from config --> .yml
-		ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
+		Subject:   strconv.Itoa(int(userId)),
+		IssuedAt:  time.Now().Unix(),
+		ExpiresAt: time.Now().Add(time.Minute * time.Duration(AccessTokenExpiresAt)).Unix(),
 	})
 
 	accessToken, err := t.SignedString(s.hmacSecret)
@@ -129,7 +132,7 @@ func (s *UsersService) generateTokens(ctx *gin.Context, userId int64) (string, s
 	if err := s.token.Create(ctx, domain.RefreshSession{
 		UserId:     int(userId),
 		Token:      refreshToken,
-		Expires_at: time.Now().Add(time.Hour * 24 * 30),
+		Expires_at: time.Now().Add(time.Hour * time.Duration(RefreshTokenExpiresAt)),
 	}); err != nil {
 		return "", "", err
 	}
@@ -138,7 +141,7 @@ func (s *UsersService) generateTokens(ctx *gin.Context, userId int64) (string, s
 }
 
 func newRefreshToken() (string, error) {
-	b := make([]byte, 32)
+	b := make([]byte, domain.LEN_OF_REFRESH_TOKEN)
 
 	s := rand.NewSource(time.Now().Unix())
 	r := rand.New(s)
